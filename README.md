@@ -25,8 +25,9 @@
 
 I work with gateways often in my industry. Time and time again I found myself frustrated with how modern gateways work and their instalation process. Modern gateways also typically lack support for new tools such as kubernetes and docker. 
 
+Go-Open-API is my solution to these problems. I wanted an API gateway that is easily configurable and easy to work with. To this end I plan on adding a docker image, easy steps for building your own image, support for working withing a kube cluster, cluster of its own for easy settings replication.
 
-
+Some of this has already happened. For example you can currently (with a modern terminal) ssh into a machine and access the terminal based GUI and run commands and check logs without third party support or additional overhead.
 
 # Installation
 
