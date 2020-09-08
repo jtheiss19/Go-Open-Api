@@ -1,4 +1,4 @@
-package website
+package main
 
 import (
 	"fmt"
@@ -10,12 +10,35 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jtheiss19/Go-Open-Api/communication"
 )
 
-func Start(port string) {
+var server http.Server
+var power bool = false
+var logger *log.Logger
 
-	f, _ := os.Create("./website_log")
-	log.SetOutput(f)
+var port = "8080"
+
+func status() bool {
+	return power
+}
+
+func stop() {
+	if power {
+		logger.Output(0, "User Has Chose to Shutdown")
+		logger.Output(0, "Shutting Down...")
+		server.Close()
+		power = false
+		logger.Output(0, "...Shutdown")
+		os.Exit(3)
+	}
+}
+
+func main() {
+	power = true
+	f, _ := os.Create("./logs/website_log")
+	logger = log.New(f, "Website ", log.LstdFlags)
 
 	mux := http.NewServeMux()
 	mux.Handle("/public/", logging(public()))
@@ -29,9 +52,13 @@ func Start(port string) {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  15 * time.Second,
 	}
-	log.Output(0, "main: running simple server on port: "+port)
+
+	logger.Output(0, "main: running simple server on port: "+port)
+
+	go communication.Host(myHandler)
+
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("main: couldn't start simple server: %v\n", err)
+		logger.Fatalf("main: couldn't start simple server: %v\n", err)
 	}
 }
 
@@ -41,9 +68,9 @@ func logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		req := fmt.Sprintf("%s %s", r.Method, r.URL)
-		log.Println(req)
+		logger.Output(0, req)
 		next.ServeHTTP(w, r)
-		log.Println(req, "completed in", time.Now().Sub(start))
+		logger.Output(0, req+" completed in "+time.Now().Sub(start).String())
 	})
 }
 
@@ -68,11 +95,10 @@ func index() http.Handler {
 			http.Error(w, fmt.Sprintf("index: couldn't parse template: %v", err), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	})
 }
 
-func TestIndex(t *testing.T) {
+func testIndex(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "/", nil)
 	if err != nil {
 		t.Fatalf("TestIndex: couldn't create HTTP GET request: %v", err)

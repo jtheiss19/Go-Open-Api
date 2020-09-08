@@ -1,0 +1,8 @@
+Website 2020/09/06 00:50:46 main: running simple server on port: 8080
+Website 2020/09/06 00:50:52 GET /
+Website 2020/09/06 00:50:52 GET / completed in 176.4µs
+Website 2020/09/06 00:51:09 GET /
+Website 2020/09/06 00:51:09 GET / completed in 73.9µs
+Website 2020/09/06 00:51:47 User Has Chose to Shutdown
+Website 2020/09/06 00:51:47 Shutting Down...
+Website 2020/09/06 00:51:47 ...Shutdown

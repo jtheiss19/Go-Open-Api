@@ -12,67 +12,76 @@ var timeoutDuration = 10 * time.Second
 var power bool = false
 var backendServers map[string]string = make(map[string]string)
 var shutdownchan chan string = make(chan string)
+var connSignal chan string = make(chan string)
+
+var logger *log.Logger
+
+func Status() bool {
+	return power
+}
 
 //Stop is the function that should be called to properly close the gateway
 func Stop() {
-	shutdownchan <- "User Chose To Shutdown"
+	if power {
+		shutdownchan <- "User Chose To Shutdown"
+		power = false
+	}
 }
 
 //Start begins the hosting process for the
 //client to server application
 func Start(port string) {
-	f, _ := os.Create("./gateway_log")
-	log.SetOutput(f)
+	f, _ := os.Create("./logs/gateway_log")
+	logger = log.New(f, "Gateway ", log.LstdFlags)
 
-	log.Output(0, "Launching Software Defined Network...")
+	logger.Output(0, "Launching Gateway...")
 
 	ln, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.Output(0, err.Error())
+		logger.Output(0, err.Error())
 		shutdownchan <- "Could Not Listen on Port" + ":" + port
 		return
 	}
 
-	log.Output(0, "Online - Now Listening On Port: "+port)
+	logger.Output(0, "Online - Now Listening On Port: "+port)
 	power = true
 	go shutdownLoop()
 
-	ConnSignal := make(chan string)
-
 	for power {
-		go session(ln, ConnSignal, port)
-		log.Output(0, <-ConnSignal)
+		go session(ln, port)
+		logger.Output(0, <-connSignal)
 	}
 
-	log.Output(0, "...Shut Down")
+	logger.Output(0, "...Shutdown")
 }
 
 func shutdownLoop() {
-	log.Output(0, <-shutdownchan)
-	log.Output(0, "Shutting Down Now...")
+	logger.Output(0, <-shutdownchan)
+	logger.Output(0, "Shutting Down Now...")
 	power = false
+	connSignal <- "Pruning Connections"
 }
 
 //session creates a new seesion listening on a port. This
 //session handles all interactions with the connected
 //client
-func session(ln net.Listener, ConnSignal chan string, port string) {
+func session(ln net.Listener, port string) {
 	conn, err := ln.Accept()
 	if err != nil {
-		ConnSignal <- "Could not establish a connection with client"
+		connSignal <- "Could not establish a connection with client"
 		conn.Close()
 		return
 	}
 	defer conn.Close()
 
-	ConnSignal <- "New Connection \n"
+	connSignal <- "New Connection \n"
 
 	var serverConn net.Conn = nil
 
 	//Open a new connection to the server
 	serverConn, err = net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Output(0, "Signal could not be relized")
+		logger.Output(0, "Signal could not be relized")
 		return
 	}
 
@@ -95,13 +104,13 @@ func sessionListener(InuputConnection net.Conn, OutputConnection net.Conn) {
 		//Read without error from the inputconnection
 		bytes, err := InuputConnection.Read(buf)
 		if err != nil {
-			log.Output(0, "read Error")
+			logger.Output(0, "read Error")
 			break
 		}
 
 		//If we have the full message we can now send it
 		if bytes != 1024 {
-			log.Output(0, "Full Message Recieved")
+			logger.Output(0, "Full Message Recieved")
 			buf = buf[0 : bytes+1] //Allows for the endcharacter to be captured, not outputed as a byte count number normally
 			temp = append(temp, buf...)
 			break
@@ -111,6 +120,6 @@ func sessionListener(InuputConnection net.Conn, OutputConnection net.Conn) {
 		temp = append(temp, buf...)
 
 	}
-	log.Output(0, string(temp))
+	logger.Output(0, string(temp))
 	OutputConnection.Write(temp)
 }
